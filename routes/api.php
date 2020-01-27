@@ -20,10 +20,18 @@ use Illuminate\Support\Facades\Route;
 
 
 Route::group(['namespace'=>'User'], function(){
-
+});
     Route::post('/register', ['uses'=>'UserController@register']);
     Route::post('/login', ['uses'=>'UserController@login']);
     // Route::post('/register', ['uses'=>'AuthController@register']);
     // Route::post('/login', 'API\AuthCotroller@register');
 
-});
+    Route::post('/send/{email}',[
+      'uses' => 'mailcontroller@send'
+    ]);
+   /* Route::get('/email', [
+       'uses'=> 'mailcontroller@email'
+       ]); 
+       */
+
+
