@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Exports\GroupExport;
 use App\GroupContact;
+use App\Contact;
 use App\User;
 use App\groups;
 use App\Fellowship;
@@ -19,7 +20,7 @@ use Carbon\Carbon;
 class GroupedContactController extends Controller
 {
     public function __construct() {
-         //$this->middleware('auth:api');
+         $this->middleware('auth:api');
     }
 
     public function addGroupedContact($id) {
@@ -35,6 +36,13 @@ class GroupedContactController extends Controller
             ];                                      
             $validator = Validator::make($request, $rule);
             $phone  = $request['phone'];
+              //********** check weather the phone exists before ************
+              $check_phone_existance = GroupContact::where('phone', $phone)->exists();
+              $check_cphone_existance = Contact::where('phone_number', $phone)->exists();
+              if($check_phone_existance) {
+                  return response()->json(['error' => 'The phone has already been taken'], 400);
+              } 
+
             $contact0 = Str::startsWith($request['phone'], '0');
             $contact9 = Str::startsWith($request['phone'], '9');
             $contact251 = Str::startsWith($request['phone'], '251');
@@ -50,11 +58,7 @@ class GroupedContactController extends Controller
             if(strlen($phone) > 13 || strlen($phone) < 13) {
                 return response()->json(['message' => 'validation error', 'error' => 'phone number length is not valid'], 400);
             }
-            // check weather the phone exists before
-            $check_phone_existance = GroupContact::where('phone', $phone)->exists();
-            if($check_phone_existance) {
-                return response()->json(['error' => 'The phone has already been taken'], 400);
-            } 
+          
             // check mail existance before
             if($request['email'] != null) {
                 $check_email_existance = GroupContact::where('email', '=',$request['email'])->exists();
@@ -63,8 +67,25 @@ class GroupedContactController extends Controller
                 }
             }
 
+            $check_cphone_existance = Contact::where('phone_number', $phone)->exists();
+            if($check_cphone_existance) {
+                return response()->json(['error' => 'The phone has already been taken in Contact table'], 400);
+            } 
+
+            $graduationYear = $request['graduation_year'].'-07-30';
+            $parse_graduation_year = Carbon::parse($graduationYear);
+            $today = Carbon::parse(date('Y-m-d'));
+            $difference = $today->diffInDays($parse_graduation_year, false);
+            
+            if($difference <= 0) {
+                return response()->json(['error' => 'graduation year is not valid for under graduate member'], 400);
+            } else if($difference < 380 && $difference > 0) {
+                $this_year_gc = true;
+            }  
+
            // $contact = Contact::find($phone_number);
             $group_contact = new GroupContact();
+            $contact = new Contact();
            // $group = groups::where([['group_id', '=', $id]]);
            $group_name = DB::table('groups')->select('group_name')->where([
             ['group_id', '=', $id],
@@ -78,6 +99,19 @@ class GroupedContactController extends Controller
             $group_contact->gender = $request['gender'];
             $group_contact->graduation_year = $request['graduation_year'];
             $group_contact->contacts_id = $id;
+
+             
+            $contact->full_name = $request['fullname'];
+            $contact->phone_number = $request['phone'];
+            $contact->email = $request['email'];
+            $contact->acadamic_dep = $request['acadamic_department'];
+            $contact->fellow_dep = $group_name;
+            $contact->gender = $request['gender'];
+            $contact->graduate_year = $request['graduation_year'];
+            $contact->is_under_graduate=true;
+            $contact->is_this_year_gc = $this_year_gc;
+            $contact->save();
+           // $contact->contacts_id = $id;
                 
             if($group_contact->save()) {
 
@@ -94,9 +128,7 @@ class GroupedContactController extends Controller
     
     public function getGroupedContact($id) {
         try {
-           // $group_contact = new GroupContact();
-           // $group_contact = GroupContact::all();
-           // $group_contact -> contacts_id
+          
             // some foreign key conditions here
             $group_contact = GroupContact::where([['contacts_id', '=', $id]])->orderBy('id')->paginate(10);
            
@@ -108,8 +140,7 @@ class GroupedContactController extends Controller
 
     public function deleteGroupedContact($id) {
         try {
-          // some Token condition Here
-
+         
             $group = GroupContact::find($id);
 
             if($group instanceof GroupContact) {
@@ -136,70 +167,5 @@ class GroupedContactController extends Controller
                 
         return Excel::download(new GroupExport, 'group_contacts.xlsx');
 }
-
-  /*  public function updateGroupedContact($id) {
-        try{
-           
-            $request = request()->only('full_name', 'phone', 'email', 'updated_by','date');
-            $group_contact = GroupContact::find($id);
-
-            if($group_contact instanceof GroupContact) {
-            $rule = [
-                'fullname' => 'required|string|max:255',
-                'phone' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|min:9|max:13|unique:grouped_contacts',
-                'email' => 'required|string',
-                'acadamic_department' => 'required|string',
-                'fellow_department' => 'required|string',  
-                'gender' => 'required|string',
-                'graduation_year' => 'required|date'             
-            ]; 
-            $validator = Validator::make($request, $rule);
-            $phone  = $request['phone'];
-            $contact0 = Str::startsWith($request['phone'], '0');
-            $contact9 = Str::startsWith($request['phone'], '9');
-            $contact251 = Str::startsWith($request['phone'], '251');
-            if($contact0) {
-                $phone = Str::replaceArray("0", ["+251"], $request['phone']);
-            }
-            else if($contact9) {
-                $phone = Str::replaceArray("9", ["+2519"], $request['phone']);
-            }
-            else if($contact251) {
-                $phone = Str::replaceArray("251", ['+251'], $request['phone']);
-            }
-            if(strlen($phone) > 13 || strlen($phone) < 13) {
-                return response()->json(['message' => 'validation error', 'error' => 'phone number length is not valid'], 400);
-            }
-            // check weather the phone exists before
-            $check_phone_existance = GroupContact::where('phone', $phone)->exists();
-            if($check_phone_existance) {
-                return response()->json(['error' => 'The phone has already been taken'], 400);
-            } 
-            // check mail existance before
-            if($request['email'] != null) {
-                $check_email_existance = GroupContact::where('email', '=',$request['email'])->exists();
-                if($check_email_existance) {
-                    return response()->json(['error' => 'The email has already been taken'], 400);
-                }
-            }
-           
-            $group_contact->full_name = isset($request['full_name']) ? $request['full_name'] : $group_contact->full_name;
-            $group_contact->phone = isset($request['phone']) ? $phone : $group_contact->phone;
-            $group_contact->email = isset($request['email']) ? $request['email'] : $group_contact->email;
-            $group_contact->updated_by = isset($request['updated_by']) ? $request['updated_by'] : $group_contact->updated_by;
-            $group_contact->date = isset($request['date']) ? $request['date'] : $group_contact->date;
-            
-            if($group_contact->update()) {
-                return response()->json(['message' => 'contact updated seccessfully'], 200);
-            } 
-            return response()->json(['message' => 'Ooops! something went wrong', 'error' => 'unable to update contact'], 500);
-          }
-          return response()->json(['message' => 'error found', 'error' => 'contact is not found'], 404);
-
-        }catch(Exception $ex) {
-            return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
-        }
-
-    }*/
 
 }

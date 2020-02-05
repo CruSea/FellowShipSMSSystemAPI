@@ -14,18 +14,30 @@ class DashboardController extends Controller
         $this->middleware('auth:api');
 	}
 	
+	public function current_user(){
+
+		$user=auth('api')->user('first_name','last_name');
+		$fname=$user->first_name;
+		$lname=$user->last_name;
+        return response()->json([[$fname],[$lname]]);
+	}
+
+	public function current_univ(){
+
+		$user=auth('api')->user('university','campus');
+		$uni=$user->university;
+		$camp=$user->campus;
+        return response()->json([[$uni],[$camp]]);
+	}
+
     public function underGraduateMembersNumber() {
     	try {
             $under_graduate_contact = new Contact();
-    		//$user = JWTAuth::parseToken()->toUser();
-    	//	if($user) {
+    	
                 $under_graduate_contact = Contact::all();
-    			//$under_graduate_contact = Contact::where(['is_under_graduate', '=', 1])->get();
     			$count = $under_graduate_contact->count();
-    			return response()->json(['count' => $count], 200);
-    		/*} else {
-    			return response()->json(['error' => 'token expired'], 401);
-    		}*/
+				return response()->json(['count' => $count], 200);
+				
     	} catch(Exception $ex) {
             return response()->json(['message' => 'somthing went wrong', 'error' => $ex->getMessage()], $ex->getStatusCode());
         }
@@ -35,15 +47,12 @@ class DashboardController extends Controller
     public function numberOfGroups() {
     	try {
             $count_group = new groups();
-    		//$user = JWTAuth::parseToken()->toUser();
-    	//	if($user) {
+    	
                 $count_group = groups::all();
     			//$under_graduate_contact = Contact::where(['is_under_graduate', '=', 1])->get();
     			$count = $count_group->count();
     			return response()->json(['count' => $count], 200);
-    		/*} else {
-    			return response()->json(['error' => 'token expired'], 401);
-    		}*/
+    	
     	} catch(Exception $ex) {
             return response()->json(['message' => 'somthing went wrong', 'error' => $ex->getMessage()], $ex->getStatusCode());
         }

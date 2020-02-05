@@ -13,9 +13,9 @@ class AddCreatedByToGroups extends Migration
      */
     public function up()
     {
-        Schema::table('groups', function (Blueprint $table) {
+       /* Schema::table('groups', function (Blueprint $table) {
             $table->string('created_by')->after('description');
-        });
+        }); */
     }
 
     /**

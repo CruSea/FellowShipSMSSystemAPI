@@ -61,8 +61,9 @@ class GroupController extends Controller
        // $user = auth::User(); 
         try { 
             $group = groups::all();
-           // $groupCount = GroupContact::all();
-            // some foreign key conditions here
+              // $groupCount = GroupContact::all();
+
+         // """""""""" some foreign key conditions here """""""""""""
             $group = groups::where([['contacts_id', '=', 1]])->orderBy('group_id', 'asc')->paginate(10);
             
             $_count = DB::table('group_contacts')->where('contacts_id','=',$id)->count();
@@ -77,10 +78,7 @@ class GroupController extends Controller
 
     public function getGroups() {
         try {
-           // $user = JWTAuth::parseToken()->toUser();
-           /* if(!$user) {
-                return response()->json(['error' => 'token expired'], 401);
-            }*/
+         
             $groups = groups::all();
             //::where('fellowship_id', '=', $user->fellowship_id)->orderBy('group_id', 'desc')->paginate(10);
             $countGroups = $groups->count();

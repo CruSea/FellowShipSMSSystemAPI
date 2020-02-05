@@ -13,15 +13,16 @@ class Groups extends Migration
      */
     public function up()
     {
-      /*  Schema::create('groups', function (Blueprint $table) {
+        Schema::create('groups', function (Blueprint $table) {
         
             $table->bigIncrements('group_id');
             $table->string('group_name');
             $table->string('description');
+            $table->string('created_by');
             $table->bigInteger('contacts_id')->unsigned()->nullable();
-            $table->foreign('contacts_id')->references('contact_id')->on('contacts')->onDelete('cascade');
+          //  $table->foreign('contacts_id')->references('contact_id')->on('contacts')->onDelete('cascade');
             $table->timestamps();  
-        });*/
+        });
     }
 
     /**

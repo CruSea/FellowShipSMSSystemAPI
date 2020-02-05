@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\user_role;
 use App\User;
 use App\Role;
 
@@ -47,6 +49,8 @@ class AuthController extends Controller
             if(strlen($phone_number) > 13 || strlen($phone_number) < 13) {
                 return response()->json(['message' => 'validation error', 'error' => 'phone number length is not valid'], 400);
             }
+
+            
             $check_phone_existance = User::where('phone_number', $phone_number)->exists();
             if($check_phone_existance) {
                 return response()->json(['error' => 'The phone has already been taken'], 400);
@@ -97,11 +101,32 @@ class AuthController extends Controller
             if(!Auth::attempt($credentials)) {
                // return response()->json(['status'=>false, 'result'=>null, 'message'=>'whoops! invalid credential has been used!','error'=>$exception->getMessage()], 401);
             }
-
-            $user = Auth::user();
-            $token = $user->createToken('authToken')->accessToken;
+            // ########## Fetch user id from user table
+            // ########## Match it in user->role table
+            // ########## Then use value and return role table name
+            $contacts_id = DB::table('users')->select('id')->where([
+                ['email', '=', $credentials['email']]
+            ])->value('id');
             
-            return response()->json(['status'=>true, 'message'=>'Authentication Successful','Logged In as','result'=>$user, 'token'=>$token],200);
+            $role = DB::table('user_role')->select('role_id')->where([
+                ['user_id', '=', $contacts_id]
+            ])->value('role_id');
+
+            $role_name = DB::table('roles')->select('name')->where([
+                ['id', '=', $role]
+            ])->value('name');
+           // >>>>>>>>>>>>>>||||||| Check Role for Login ||||||||<<<<<<<<<<<<<<<<<<<
+
+               if($role_name == 'Admin' || $role_name == 'User'){
+                $user = Auth::user();
+                $token = $user->createToken('authToken')->accessToken;
+                 
+                return response()->json(['status'=>true, 'message'=>'Authentication Successful','Logged In as'=>$role_name,'result'=>$user, 'token'=>$token],200);
+               }else{
+
+                return response()->json(['status'=>false, 'message'=>'Woops UnAuthenticated!!!!'],500);
+               }
+           
         }catch (Exception $exception){
             return response()->json(['status'=>false, 'result'=>null, 'message'=>'whoops! exception has occurred', 'error'=>$exception->getMessage()],500);
         }
