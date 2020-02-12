@@ -7,26 +7,35 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\SmsPort;
+use App\sentMessages;
+use App\FellowMessages;
+use App\Fellowship;
+use App\Settings;
 use App\Contact;
+use App\groups;
+use App\ContactGroup;
+use App\GroupMessage;
 
 class MessagesController extends Controller
 {
     protected $negarit_api_url;
 
     public function __construct() {
-       // $this->middleware('auth:api');
+        $this->middleware('auth:api');
         $this->negarit_api_url = 'https://api.negarit.net/api/';
     }
 
     public function sendContactMessage() {
         try {
 
+            $user=auth('api')->user();
+
             $request = request()->only('message', 'sent_to', 'port_name');
 
             $rule = [
                 'message' => 'required|string|min:1',
                 'port_name' => 'required|string|max:255',
-                'sent_to' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|min:9|max:13',
+                'sent_to' => 'required|regex:/^([0-9\s\-\+\(\)]*)$/|max:13',
             ];
 
             $validator = Validator::make($request, $rule);
@@ -48,7 +57,7 @@ class MessagesController extends Controller
                 return response()->json(['message' => 'error found', 'error' => 'sms port is not found'], 404);
             }
             // get api key from setting table
-            $setting = Setting::where('name', '=', 'API_KEY')->first();
+            $setting = Settings::where('name', '=', 'API_KEY')->first();
             if(!$setting) {
                 return response()->json(['message' => '404 error found', 'error' => 'Api Key is not found'], 404);
             }
@@ -66,43 +75,44 @@ class MessagesController extends Controller
             else if($contact251) {
                 $phone_number = Str::replaceArray("251", ['+251'], $request['sent_to']);
             }
-            if(strlen($phone_number) > 13 || strlen($phone_number) < 13) {
+            //|| strlen($phone_number) < 13
+            if(strlen($phone_number) > 13) {
                 return response()->json(['message' => 'validation error', 'error' => 'phone number length is not valid'], 400);
             }
 
             $contains_name = Str::contains($request['message'], '{name}');
-            $contact = Contact::where('phone', '=', $phone_number)->first();
+            $contact = Contact::where([['phone_number', '=', $phone_number], ['fellowship_id', '=', $user->fellowship_id]])->first();
             if($contact instanceof Contact) {
                 if($contains_name) {
                     $replaceName = Str::replaceArray('{name}', [$contact->full_name], $request['message']);
 
-                    $sentMessage = new SentMessage();
+                    $sentMessage = new sentMessages();
                     $sentMessage->message = $replaceName;
                     $sentMessage->sent_to = $contact->full_name;
                     $sentMessage->is_sent = false;
                     $sentMessage->is_delivered = false;
                     $sentMessage->sms_port_id = $getSmsPortId;
                     $sentMessage->fellowship_id = $user->fellowship_id;
-                    $sentMessage->sent_by = $user;
+                    $sentMessage->sent_by = $user->first_name;
                 } else {
-                    $sentMessage = new SentMessage();
+                    $sentMessage = new sentMessages();
                     $sentMessage->message = $request['message'];
-                    $sentMessage->sent_to = $contact->full_name;
+                    $sentMessage->sent_to = $phone_number;
                     $sentMessage->is_sent = false;
                     $sentMessage->is_delivered = false;
                     $sentMessage->sms_port_id = $getSmsPortId;
                     $sentMessage->fellowship_id = $user->fellowship_id;
-                    $sentMessage->sent_by = $user;
+                    $sentMessage->sent_by = $user->first_name;
                 }
             } else {
-                $sentMessage = new SentMessage();
+                $sentMessage = new sentMessages();
                 $sentMessage->message = $request['message'];
                 $sentMessage->sent_to = $phone_number;
                 $sentMessage->is_sent = false;
                 $sentMessage->is_delivered = false;
                 $sentMessage->sms_port_id = $getSmsPortId;
                 $sentMessage->fellowship_id = $user->fellowship_id;
-                $sentMessage->sent_by = $user;
+                $sentMessage->sent_by = $user->first_name;
             }
 
             if($sentMessage->save()) {
@@ -144,6 +154,461 @@ class MessagesController extends Controller
             return response()->json(['response' => '!Ooops something went wrong, message is not sent', 'error' => 'message is not sent, please send again'], 500);
         } catch(Exception $ex) {
             return response()->json(['response' => '!Ooops something went wrong, message is not sent', 'error' => $ex->getMessage()], 500);
+        }
+    }
+
+
+    // ................................... 
+
+    public function getContactsMessage() {
+        try{
+            $user=auth('api')->user();
+           
+            $contactMessage = sentMessages::where([['is_removed', '=', false],['fellowship_id', '=', $user->fellowship_id]])->orderBy('id', 'desc')->paginate(10);
+            $countMessages = $contactMessage->count();
+            if($countMessages == 0) {
+                return response()->json(['messages' => $contactMessage], 200);
+            }
+            for($i = 0; $i < $countMessages; $i++) {
+                $contactMessage[$i]->sent_by = $contactMessage[$i]->sent_by;
+            }
+            return response()->json(['messages' => $contactMessage, 'number_of_messages' => $countMessages], 200);
+        } catch(Exception $x) {
+            return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
+        }
+    }
+
+    public function removeContactMessage($id) {
+        try {
+            $user=auth('api')->user();
+
+            $sentMessage = sentMessages::find($id);
+         //   && $sentMessage->fellowship_id == $user->fellowship_id
+            if($sentMessage instanceof sentMessages) {
+              
+              //  if($sentMessage->delete()) {
+                $sentMessage->is_removed = 1;
+               // }
+                
+                if($sentMessage->update()) {
+                    return response()->json(['message' => 'message removed successfully'], 200);
+                }
+                else {
+                    return response()->json(['message' => 'Ooops! something went wrong, message is not removed'], 500);
+                }
+            } else {
+                return response()->json(['error' => 'message is not available'], 404);
+            }
+            
+        } catch(Exception $ex) {
+            return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
+        }
+    }
+// """""""""""""""""""""""""""""""""""""""" Group Message """""""""""""""""""""""""""
+    public function sendGroupMessage() {
+        try {
+            $user=auth('api')->user();
+
+            $team_message = new GroupMessage();
+            $request = request()->only('port_name', 'group', 'message');
+            $rule = [
+                'port_name' => 'required|string|max:250',
+                'group' => 'required|string|max:250',
+                'message' => 'required|string|min:1',
+                
+            ];
+            $validator = Validator::make($request, $rule);
+            if($validator->fails()) {
+                return response()->json(['message' => 'validation error', 'error' => $validator->messages()], 500);
+            }   
+            $group = groups::where([['group_name', '=', $request['group']],['fellowship_id', '=', $user->fellowship_id]])->first();
+            if(!$group) {
+                return response()->json(['message' => 'Group is not found'], 404);
+            }
+                  //, ['fellowship_id', '=', $user->fellowship_id]
+            $getSmsPortName = SmsPort::where('port_name', '=', $request['port_name'])->first();
+            if(!$getSmsPortName) {
+                return response()->json(['message' => 'error found', 'error' => 'sms port is not found'], 404);
+            }
+           
+            $getSmsPortId = $getSmsPortName->id;
+           // $fellowship_id = $user->fellowship_id;
+
+            $team_id = $group->group_id;
+
+            $contacts = Contact::whereIn('contact_id', ContactGroup::where('group_id','=', 
+            $team_id)->select('contact_id')->get())->get();
+            
+            if(count($contacts) == 0) {
+                return response()->json(['message' => 'member is not found in '.$group->name. ' team'], 404);
+            } 
+
+            $team_message->message = $request['message'];
+            $team_message->group_id = $team_id;
+            $team_message->sent_by = $user->first_name;
+            $team_message->under_graduate = true;
+            $team_message->fellowship_id = $user->fellowship_id;
+            $team_message->save();
+            
+
+            // get phones that recieve the message and not recieve the message
+            // $get_successfull_sent_phones = array();
+            // , ['fellowship_id', '=', $user->fellowship_id]]
+            $setting = Settings::where('name', '=', 'API_KEY')->first();
+        
+            if(!$setting) {
+                return response()->json(['message' => '404 error found', 'error' => 'Api Key is not found'], 404);
+            }
+            $insert = [];
+            $contains_name = Str::contains($request['message'], '{name}');
+
+           // return response()->json(['message' => $contains_name]);
+
+            if($contains_name) {
+                for($i = 0; $i < count($contacts); $i++) {
+                    $contact = $contacts[$i];
+                    $replaceName = Str::replaceArray('{name}', [$contact->full_name], $request['message']);
+                    // $under_graduate = Contact::where([['id', $contacts[$i]->id], ['is_under_graduate', 0]])->get();
+                    if($contact->is_under_graduate) {
+                        $sent_message = new sentMessages();
+                        $sent_message->message = $replaceName;
+                        $sent_message->sent_to = $contact->$phone_number;;
+                        $sent_message->is_sent = false;
+                        $sent_message->is_delivered = false;
+                        $sent_message->sms_port_id = $getSmsPortId;
+                        $sent_message->is_removed=false;
+                        $sent_message->fellowship_id = $user->fellowship_id;
+                        $sent_message->sent_by = $user->first_name;
+
+                        if(!$sent_message->save()) {
+                            $sent_message = new sentMessages();
+                            $sent_message->message = $replaceName;
+                            $sent_message->sent_to = $contact->$phone_number;;
+                            $sent_message->is_sent = false;
+                            $sent_message->is_delivered = false;
+                            $sent_message->sms_port_id = $getSmsPortId;
+                            $sent_message->is_removed=false;
+                            $sent_message->fellowship_id = $user->fellowship_id;
+                            $sent_message->sent_by = $user->first_name;
+                            $sent_message->save();
+                        }
+                        $insert[] = ['id' => $i+1, 'message' => $sent_message->message, 'phone_number' => $contact->phone];
+                    }
+                }
+            } else {
+                for($i = 0; $i < count($contacts); $i++) {
+                    $contact = $contacts[$i];
+                    // $under_graduate = Contact::where([['id', $contacts[$i]->id], ['is_under_graduate', 0]])->get();
+                    if($contact->is_under_graduate) {
+                        $sent_message = new sentMessages();
+                        $sent_message->message = $request['message'];
+                        $sent_message->sent_to = $contact->phone_number;
+                        $sent_message->is_sent = false;
+                        $sent_message->is_delivered = false;
+                        $sent_message->sms_port_id = $getSmsPortId;
+                        $sent_message->fellowship_id = $user->fellowship_id;
+                        $sent_message->sent_by = $user->first_name;
+
+                        if(!$sent_message->save()) {
+                            $sent_message = new sentMessages();
+                            $sent_message->message = $request['message'];
+                            $sent_message->sent_to = $contact->phone_number;
+                            $sent_message->is_sent = false;
+                            $sent_message->is_delivered = false;
+                            $sent_message->sms_port_id = $getSmsPortId;
+                            $sent_message->fellowship_id = $user->fellowship_id;
+                            $sent_message->sent_by = $user->first_name;
+                            $sent_message->save();
+                        }
+                        $insert[] = ['id' => $i+1, 'message' => $sent_message->message, 'phone' => $contact->phone_number];
+                    }
+                }
+            }
+            if($insert == []) {
+                $team_message->delete();
+                return response()->json(['message' => 'under graduate member is not found in '.$group->name. ' Group'], 404);
+            }
+            $negarit_message_request = array();
+            $negarit_message_request['API_KEY'] = $setting->value;
+            $negarit_message_request['campaign_id'] = $getSmsPortName->negarit_campaign_id;
+            $negarit_message_request['messages'] = $insert;
+
+        //    return response()->json(['message' => $negarit_message_request]);
+
+                    //   sent_multiple_messages 
+            $negarit_response = $this->sendPostRequest($this->negarit_api_url, 
+                'api_request/sent_multiple_messages', 
+                json_encode($negarit_message_request));
+             $decoded_response = json_decode($negarit_response);
+
+          // return response()->json(['message' => $decoded_response]);
+
+            if($decoded_response) {
+               
+                if(isset($decoded_response->status)) {
+                    $sent_message->is_sent = true;
+                    $sent_message->is_delivered = true;
+                    $sent_message->update();
+                    return response()->json(['response' => $decoded_response], 200);
+                } 
+                else {
+                    $sent_message->is_sent = true;
+                    $sent_message->is_delivered = true;
+                    $sent_message->update();
+                    return response()->json(['response' => $decoded_response], 500);
+                }
+               // return response()->json(['message' => $decoded_response]);
+            } else {
+                return response()->json(['message' => 'Ooops! something went wrong', 'response' => $decoded_response], 500);
+            }
+
+        } catch(Exception $ex) {
+            return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
+        }
+    }
+
+    public function getGroupMessage() {
+        try {
+            $user=auth('api')->user();
+                   
+                $group_message = GroupMessage::where([['under_graduate', '=', true], ['is_removed', '=', false],['fellowship_id', '=', $user->fellowship_id]])->orderBy('id', 'desc')->paginate(10);
+                $count_group_message= $group_message->count();
+                  //  return response()->json(['group_message' => $group_message], 200); json_decode($group_message[$i]->sent_by
+
+                for($i = 0; $i < $count_group_message; $i++) {
+                    $group = groups::find($group_message[$i]->group_id);
+                    $group_message[$i]->sent_by = $user->first_name;
+                    $group_message[$i]->group_id = $group->group_name;
+                }
+                return response()->json(['group_message' => $group_message,'count'=>$count_group_message], 200);
+            } catch(Exception $ex) {
+            return response()->json(['messag' => 'Ooops! something went wrong', 
+                'error' => $ex->getMessage()], 500);
+        } 
+    }
+
+    public function deleteGroupMessage($id) {
+        try {
+            $user=auth('api')->user();
+
+                $group_message = GroupMessage::find($id);
+                if($group_message instanceof getGroupMessage) { //&& $group_message->fellowship_id == $user->fellowship_id
+                    $group_message->is_removed = 1;
+                    if($group_message->update()) {
+                        return response()->json(['message' => 'Group message removed successfully'], 200);
+                    }
+                    return response()->json(['message' => 'Ooops! something went wrong, please try again'], 500);
+                }
+                return response()->json(['error' => 'Group message is not found'], 404);
+        } catch(Exception $ex) {
+            return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
+        }
+    }
+
+    // ||||||||**** Bulk Message ****||||||||||
+
+    public function sendBulkMessage() {
+        try {
+                $user=auth('api')->user();
+
+                $request = request()->only('port_name','message');
+                $fellowship_message = new FellowMessages();
+                $rule = [
+                    'port_name' => 'required|string|max:250',
+                    'message' => 'required|string|min:1',
+                ];
+                $validator = Validator::make($request, $rule);
+                if($validator->fails()) {
+                    return response()->json(['message' => 'validation error', 'error' => $validator->messages()], 400);
+                }           //  ['fellowship_id', '=', $user->fellowship_id]]
+                $getSmsPortName = SmsPort::where('port_name', '=', $request['port_name'])->first();
+                if(!$getSmsPortName) {
+                    return response()->json(['message' => 'error found', 'error' => 'sms port is not found'], 404);
+                }
+                $getSmsPortId = $getSmsPortName->id;
+
+                $fellowship_id = $user->fellowship_id;
+
+                $fellowship = Fellowship::find($fellowship_id);
+                if(!$fellowship) {
+                    return response()->json(['message' => "can't send a fellowship message", 'error' => 'fellowship is not found'], 404);
+                }
+
+                $fellowship_message->message = $request['message'];
+                $fellowship_message->fellowship_id = $fellowship_id;
+                $fellowship_message->sent_by = $user->first_name;
+                $fellowship_message->under_graduate = true;
+                $fellowship_message->save();
+     
+                $contacts = Contact::where('fellowship_id', '=', $user->fellowship_id)->get();
+
+                if(count($contacts) == 0) {
+                    return response()->json(['message' => 'member is not found in '. $fellowship->university_name. ' fellowship'], 404);
+                }
+                                  
+                $setting = Settings::where('name', '=', 'API_KEY')->first();
+                if(!$setting) {
+                    return response()->json(['message' => '404 error found', 'error' => 'Api Key is not found'], 404);
+                }
+                $insert = [];
+                $contains_name = Str::contains($request['message'], '{name}');
+                if($contains_name) {
+                    for($i = 0; $i < count($contacts); $i++) {
+                        $contact = $contacts[$i];
+                        $replaceName = Str::replaceArray('{name}', [$contact->full_name], $request['message']);
+
+                        if($contact->is_under_graduate) {
+
+                            $sent_message = new sentMessages();
+                            $sent_message->message = $replaceName;
+                            $sent_message->sent_to = $contact->full_name;
+                            $sent_message->is_sent = false;
+                            $sent_message->is_delivered = false;
+                            $sent_message->sms_port_id = $getSmsPortId;
+                            $sent_message->fellowship_id = $user->fellowship_id;
+                            $sent_message->sent_by = $user->first_name;
+
+                            if(!$sent_message->save()) {
+
+                                $sent_message = new sentMessages();
+                                $sent_message->message = $replaceName;
+                                $sent_message->sent_to = $contact->full_name;
+                                $sent_message->is_sent = false;
+                                $sent_message->is_delivered = false;
+                                $sent_message->sms_port_id = $getSmsPortId;
+                                $sent_message->fellowship_id = $user->fellowship_id;
+                                $sent_message->sent_by = $user->first_name;
+                                $sent_message->save();
+                            }
+                            $insert[] = ['id' => $i+1, 'message' => $sent_message->message, 'phone' => $contact->phone];
+                        }
+                    }
+                } else {
+                    for($i = 0; $i < count($contacts); $i++) {
+                        $contact = $contacts[$i];
+
+                        if($contact->is_under_graduate) {
+
+                            $sent_message = new sentMessages();
+                            $sent_message->message = $request['message'];
+                            $sent_message->sent_to = $contact->full_name;
+                            $sent_message->is_sent = false;
+                            $sent_message->is_delivered = false;
+                            $sent_message->sms_port_id = $getSmsPortId;
+                            $sent_message->fellowship_id = $user->fellowship_id;
+                            $sent_message->sent_by = $user->first_name;
+                            if(!$sent_message->save()) {
+
+                                $sent_message = new sentMessages();
+                                $sent_message->message = $request['message'];
+                                $sent_message->sent_to = $contact->full_name;
+                                $sent_message->is_sent = false;
+                                $sent_message->is_delivered = false;
+                                $sent_message->sms_port_id = $getSmsPortId;
+                                $sent_message->fellowship_id = $user->fellowship_id;
+                                $sent_message->sent_by = $user->first_name;
+                                $sent_message->save();
+                            }
+                            $insert[] = ['id' => $i+1, 'message' => $sent_message->message, 'phone' => $contact->phone_number];
+                        }
+                    }
+                   // return response()->json(['message' => $sent_message]);
+                }
+                if($insert == []) {
+                    $fellowship_message->delete();
+                    return response()->json(['message' => 'under graduate members are not found in this fellowship'], 404);
+                }
+                $negarit_message_request = array();
+                $negarit_message_request['API_KEY'] = $setting->value;
+                $negarit_message_request['campaign_id'] = $getSmsPortName->negarit_campaign_id;
+                $negarit_message_request['messages'] = $insert;
+
+                $negarit_response = $this->sendPostRequest($this->negarit_api_url, 
+                    'api_request/sent_multiple_messages', 
+                    json_encode($negarit_message_request));
+                $decoded_response = json_decode($negarit_response);
+ 
+               // return response()->json(['message' => $decoded_response]);
+
+                if($decoded_response) {
+                    if(isset($decoded_response->status)) {
+                        $sent_message->is_sent = true;
+                        $sent_message->is_delivered = true;
+                        $sent_message->update();
+                        return response()->json(['response' => $decoded_response], 200);
+                    } 
+                    else {
+                        $sent_message->is_sent = true;
+                        $sent_message->is_delivered = true;
+                        $sent_message->update();
+                        return response()->json(['response' => $decoded_response], 500);
+                    }
+                    return response()->json(['message' => $decoded_response]);
+                } else {
+                    return response()->json(['message' => 'Ooops! something went wrong', 'response' => $decoded_response], 500);
+                }
+           
+        } catch(Exception $ex) {
+            return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
+        }
+    }
+
+    public function getBulkMessage(){
+        try{
+            $user=auth('api')->user();
+           
+            $contactMessage = sentMessages::where([['is_removed', '=', false],['fellowship_id', '=', $user->fellowship_id]])->orderBy('id', 'desc')->paginate(10);
+            $countMessages = $contactMessage->count();
+            if($countMessages == 0) {
+                return response()->json(['messages' => $contactMessage], 200);
+            }
+            for($i = 0; $i < $countMessages; $i++) {
+                $contactMessage[$i]->sent_by = $contactMessage[$i]->sent_by;
+            }
+            return response()->json(['messages' => $contactMessage, 'number_of_messages' => $countMessages], 200);
+        } catch(Exception $x) {
+            return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
+        }
+    }
+
+    // ******** || *** Recieve Message from client *** || ************
+
+    public function getNegaritRecievedMessage() {
+        try {
+          
+            $setting = Settings::where('name', '=', 'API_KEY')->first();
+            if($setting instanceof Settings) {
+                $API_KEY = $setting->value;
+                $negarit_response = $this->sendGetRequest($this->negarit_api_url,
+                    'api_request/received_messages?API_KEY='.$API_KEY);
+                $decode_negarit_response = json_decode($negarit_response,true);
+               
+               //  $data = $decode_negarit_response; 
+               
+                if($decode_negarit_response) {
+                    
+                    foreach ($decode_negarit_response as $list) {
+                       // foreach (array_values($list) as $card) {
+                               return resopnse()->json($card);
+                        }
+                    if(isset($decode_negarit_response->status) && isset($decode_negarit_response->received_messages)) {
+                                $received_messages = $decode_negarit_response->received_messages;
+                          
+                           //  return response()->json(['status'=> true, 'received_messages'=> $received_messages],200);
+                            //    foreach ($decode_negarit_response->received_messages as $list) {
+                            //    // foreach (array_values($list)[0] as $card) {
+                            //        return resopnse()->json($list);
+                               }
+                            }
+                         //  }  
+                     // ????????????????????????????????????????????????
+                    //**"""""""""""""""something to do here"""""""""*******************************/ => $decode_negarit_response
+              //  }
+                return response()->json(['message' => 'Ooops! something went wrong'], 500);
+            }
+            return response()->json(['message' => '404 error found', 'error' => 'Api Key is not found'],404);
+        } catch(Exception $ex) {
+            return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
         }
     }
 }

@@ -16,10 +16,10 @@ class PasswordResetController extends Controller
         DB::table('users')->where("email", '=',$email)
                           ->update(['users.password'=>$pass]);
 
-              return response('Password Updates Successfully');        
+              return response()->json('Password Updates Successfully');        
 
         }else{
-              return response('Woops Failed operation !!!');
+              return response()->json('Woops Failed operation !!!');
         }
     }
 }

@@ -13,7 +13,7 @@ class Contacts extends Migration
      */
     public function up()
     {
-      /*  Schema::create('contacts', function (Blueprint $table) {
+        Schema::create('contacts', function (Blueprint $table) {
         
             $table->bigIncrements('contact_id');
             $table->string('full_name');
@@ -25,10 +25,10 @@ class Contacts extends Migration
             $table->string('graduate_year');
             $table->integer('is_under_graduate');
             $table->integer('is_this_year_gc');
-            $table->bigInteger('fellowship_id')->unsigned()->nullable();
-            $table->foreign('fellowship_id')->references('fellow_id')->on('fellowship')->onDelete('cascade');
+            $table->bigInteger('fellowship_id')->unsigned();
+            $table->foreign('fellowship_id')->references('fellow_id')->on('fellowships')->onDelete('cascade');
             $table->timestamps();  
-    });*/
+    });
     }
 
     /**

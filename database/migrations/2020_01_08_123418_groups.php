@@ -20,7 +20,8 @@ class Groups extends Migration
             $table->string('description');
             $table->string('created_by');
             $table->bigInteger('contacts_id')->unsigned()->nullable();
-          //  $table->foreign('contacts_id')->references('contact_id')->on('contacts')->onDelete('cascade');
+            $table->bigInteger('fellowship_id')->unsigned();
+            $table->foreign('fellowship_id')->references('fellow_id')->on('fellowships')->onDelete('cascade');
             $table->timestamps();  
         });
     }

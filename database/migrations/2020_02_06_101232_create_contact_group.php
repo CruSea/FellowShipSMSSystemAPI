@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateGroupMessage extends Migration
+class CreateContactGroup extends Migration
 {
     /**
      * Run the migrations.
@@ -13,18 +13,14 @@ class CreateGroupMessage extends Migration
      */
     public function up()
     {
-        Schema::create('group_messages', function (Blueprint $table) {
+      /*  Schema::create('contact_groups', function (Blueprint $table) {
             $table->bigIncrements('id');
-            $table->string('message');
             $table->bigInteger('group_id')->unsigned();
             $table->foreign('group_id')->references('group_id')->on('groups')->onDelete('cascade');
-            $table->boolean('under_graduate');
-            $table->boolean('is_removed')->default(false);
-            $table->bigInteger('fellowship_id')->unsigned();
-            $table->foreign('fellowship_id')->references('fellow_id')->on('fellowships')->onDelete('cascade');
-            $table->string('sent_by');
+            $table->bigInteger('contact_id')->unsigned();
+            $table->foreign('contact_id')->references('contact_id')->on('contacts')->onDelete('cascade');
             $table->timestamps();
-        });
+            });*/
     }
 
     /**
@@ -34,6 +30,6 @@ class CreateGroupMessage extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('group_messages');
+      //  Schema::dropIfExists('contact_groups');
     }
 }

@@ -14,7 +14,7 @@ class GroupContacts extends Migration
     public function up()
     {
         
-       /* Schema::create('group_contacts', function (Blueprint $table) {
+        Schema::create('group_contacts', function (Blueprint $table) {
         
             $table->bigIncrements('Id');
             $table->string('fullname');
@@ -24,10 +24,12 @@ class GroupContacts extends Migration
             $table->string('fellow_department');
             $table->string('gender');
             $table->string('graduation_year');
+            $table->bigInteger('fellowship_id')->unsigned();
+            $table->foreign('fellowship_id')->references('fellow_id')->on('fellowships')->onDelete('cascade');
             $table->bigInteger('contacts_id')->unsigned()->nullable();
             $table->foreign('contacts_id')->references('group_id')->on('groups')->onDelete('cascade');
             $table->timestamps();  
-        });*/
+        });
     }
 
     /**

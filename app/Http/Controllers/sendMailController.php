@@ -11,7 +11,7 @@ class sendMailController extends Controller
 {
     //>>>>>>>>>>>>>|||| Send Registration Link |||||<<<<<<<<<<<<<<
     
-    public function sendMail($email) {
+  /*  public function sendMail($email) {
     	
         Mail::send(['text'=>'mail'],['name','ruth'],function($message) use ($email){
             $message->to($email)->subject('test Email');
@@ -20,7 +20,7 @@ class sendMailController extends Controller
         });
         return response(['email'=>$email]);
        
-    }
+    }*/
 
     // >>>>>>>>>>>>|||| Check mail existance and send Password ResetLink||||<<<<<<<<<<
 

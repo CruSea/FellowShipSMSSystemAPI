@@ -19,9 +19,11 @@ class RegisterAdminController extends Controller
         public function getAdmins() {
             try {
                  $admins = User::all();
-               //  $contacts = Users::where([['is_under_graduate', '=', 1]])->orderBy('contact_id')->paginate(10);
+                 $fellow = DB::table('fellowships')->select('fellow_id')->get();
+
+               //  $admin = User::where(['fellowship_id', '=', $fellow])->get();
                 return response()->json(['contacts' => $admins], 200);
-            } catch(Exception $ex) {
+            } catch(Exception $ex) { 
                 return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex], 500);
             }
         }

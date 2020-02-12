@@ -11,13 +11,15 @@ use App\Settings;
 class NegaritController extends Controller
 {
     public function __construct() {
-      //  $this->middleware('auth:api');
+        $this->middleware('auth:api');
     }
 
     public function storeSmsPort(Request $request) {
         try {
                 
-            $setting = Settings::where(['name', '=', 'API_KEY'])->first();
+            $user=auth('api')->user('first_name');
+
+            $setting = Settings::where('name', '=', 'API_KEY')->first();
             if(!$setting) {
                 return response()->json(['error' => 'setting was not found'], 404);
             }
@@ -37,20 +39,20 @@ class NegaritController extends Controller
 
             // >>>>>***>>>***>>> check sms port existance before <<<***<<<***<<<<<<
             
-            $fellowship_smsPort = SmsPort::where(['port_name', '=', $request->input('port_name')])->first();
+           /* $fellowship_smsPort = SmsPort::where(['port_name', '=', $request->input('port_name')])->first();
             if($fellowship_smsPort) {
                 return response()->json(['error' => 'sms port has already been taken'], 400);
-            }
+            }*/
 
             $smsPort = new SmsPort();
             $smsPort->port_name = $request->input('port_name');
-            $smsPort->fellowship_id = $fellowship_id;
+          //  $smsPort->fellowship_id = $fellowship_id;
             
             $smsPort->api_key = $API_KEY;
             $smsPort->negarit_sms_port_id = $request->input('negarit_sms_port_id');
             $smsPort->negarit_campaign_id = $request->input('negarit_campaign_id');
             $smsPort->port_type = $request->input('port_type');
-            $smsPort->created_by = $user;
+            $smsPort->created_by = $user->first_name;
             if($smsPort->save()) {
                 return response()->json(['message' => 'port saved successfully'], 200);
             }
@@ -59,7 +61,9 @@ class NegaritController extends Controller
             return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex], 500);
         }
     }
-    public function getSmsPort($id) {
+
+
+   /* public function getSmsPort($id) {
         try {
            
             $smsPort = SmsPort::find($id);
@@ -71,14 +75,14 @@ class NegaritController extends Controller
         } catch(Exception $ex) {
             return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
         }
-    }
+    }*/
     
     public function getSmsPorts() {
         try {
           
             $smsPorts = SmsPort::all();
             $countSmsPorts = $smsPorts->count();
-            if($countSmsPorts == 0) {
+            if($countSmsPorts > 0) {
                 return response()->json(['sms_ports' => $smsPorts], 200);
             }
             for($i = 0; $i < $countSmsPorts; $i++) {

@@ -25,6 +25,8 @@ class GroupedContactController extends Controller
 
     public function addGroupedContact($id) {
         try{
+            $user=auth('api')->user();
+
             $request = request()->only('fullname', 'phone', 'email', 'acadamic_department','gender','graduation_year');
             $rule = [
                 'fullname' => 'required|string|max:255',
@@ -37,11 +39,11 @@ class GroupedContactController extends Controller
             $validator = Validator::make($request, $rule);
             $phone  = $request['phone'];
               //********** check weather the phone exists before ************
-              $check_phone_existance = GroupContact::where('phone', $phone)->exists();
+            /*  $check_phone_existance = GroupContact::where('phone', $phone)->exists();
               $check_cphone_existance = Contact::where('phone_number', $phone)->exists();
               if($check_phone_existance) {
                   return response()->json(['error' => 'The phone has already been taken'], 400);
-              } 
+              } */
 
             $contact0 = Str::startsWith($request['phone'], '0');
             $contact9 = Str::startsWith($request['phone'], '9');
@@ -55,7 +57,7 @@ class GroupedContactController extends Controller
             else if($contact251) {
                 $phone = Str::replaceArray("251", ['+251'], $request['phone']);
             }
-            if(strlen($phone) > 13 || strlen($phone) < 13) {
+            if(strlen($phone) > 13 || strlen($phone) < 7) {
                 return response()->json(['message' => 'validation error', 'error' => 'phone number length is not valid'], 400);
             }
           
@@ -67,10 +69,6 @@ class GroupedContactController extends Controller
                 }
             }
 
-            $check_cphone_existance = Contact::where('phone_number', $phone)->exists();
-            if($check_cphone_existance) {
-                return response()->json(['error' => 'The phone has already been taken in Contact table'], 400);
-            } 
 
             $graduationYear = $request['graduation_year'].'-07-30';
             $parse_graduation_year = Carbon::parse($graduationYear);
@@ -81,14 +79,13 @@ class GroupedContactController extends Controller
                 return response()->json(['error' => 'graduation year is not valid for under graduate member'], 400);
             } else if($difference < 380 && $difference > 0) {
                 $this_year_gc = true;
-            }  
+            }
 
-           // $contact = Contact::find($phone_number);
             $group_contact = new GroupContact();
             $contact = new Contact();
-           // $group = groups::where([['group_id', '=', $id]]);
+           
            $group_name = DB::table('groups')->select('group_name')->where([
-            ['group_id', '=', $id],
+            ['group_id', '=', $id],['fellowship_id','=',$user->fellowship_id]
         ])->value('group_name');
             
             $group_contact->fullname = $request['fullname'];
@@ -98,6 +95,7 @@ class GroupedContactController extends Controller
             $group_contact->fellow_department = $group_name;
             $group_contact->gender = $request['gender'];
             $group_contact->graduation_year = $request['graduation_year'];
+            $group_contact->fellowship_id =$user->fellowship_id;
             $group_contact->contacts_id = $id;
 
              
@@ -110,6 +108,7 @@ class GroupedContactController extends Controller
             $contact->graduate_year = $request['graduation_year'];
             $contact->is_under_graduate=true;
             $contact->is_this_year_gc = $this_year_gc;
+            $contact->fellowship_id = $user->fellowship_id;
             $contact->save();
            // $contact->contacts_id = $id;
                 

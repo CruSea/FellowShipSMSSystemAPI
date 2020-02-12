@@ -27,7 +27,7 @@ class GroupController extends Controller
 
     public function addGroup() {
         try{
-           $user=auth('api')->user('first_name');
+           $user=auth('api')->user();
 
             $request = request()->only('group_name', 'description');
             $rule = [
@@ -43,11 +43,12 @@ class GroupController extends Controller
             $group->description = $request['description'];
             $group->created_by = $user->first_name;
             $group->contacts_id = true;
+            $group->fellowship_id = $user->fellowship_id;
            // $group->created_at=$request['created_at'];
         
             if($group->save()) {
 
-                return response()->json(['message' => 'contact added successfully'], 200);
+                return response()->json(['message' => 'Group added successfully'], 200);
                  
             }
            
@@ -58,15 +59,16 @@ class GroupController extends Controller
     }
  
     public function getGroup($id) {
-       // $user = auth::User(); 
-        try { 
-            $group = groups::all();
-              // $groupCount = GroupContact::all();
 
+        $user=auth('api')->user();
+        try { 
+           
          // """""""""" some foreign key conditions here """""""""""""
-            $group = groups::where([['contacts_id', '=', 1]])->orderBy('group_id', 'asc')->paginate(10);
+            $group = groups::where([['contacts_id', '=', 1],['fellowship_id','=',$user->fellowship_id]])->orderBy('group_id', 'asc')->paginate(10);
             
-            $_count = DB::table('group_contacts')->where('contacts_id','=',$id)->count();
+            $_count = DB::table('group_contacts')->where(
+                [['contacts_id','=',$id],['fellowship_id','=',$user->fellowship_id]]
+                )->count();
            
                 return response()->json(['Groups' => $group,'contacts' =>$_count], 200);
             
@@ -78,10 +80,11 @@ class GroupController extends Controller
 
     public function getGroups() {
         try {
-         
-            $groups = groups::all();
-            //::where('fellowship_id', '=', $user->fellowship_id)->orderBy('group_id', 'desc')->paginate(10);
-            $countGroups = $groups->count();
+            $user=auth('api')->user();
+
+            $groups = groups::where('fellowship_id', '=', $user->fellowship_id)->get();
+           // $group_name =$groups->group_name;
+            //$countGroups = $groups->count();
 
                 return response()->json(['Groups' => $groups], 200);
             for($i = 0; $i < $countGroups; $i++) {
@@ -95,11 +98,11 @@ class GroupController extends Controller
 
     public function deleteGroup($id) {
         try {
-          // some Token condition Here
+            $user=auth('api')->user();
 
             $group = groups::find($id);
 
-            if($group instanceof groups) {
+            if($group instanceof groups && $group->group_id == $user->fellowship_id) {
 
                 if($group->delete()) {
                     return response()->json(['message' => 'contact deleted successfully'], 200);

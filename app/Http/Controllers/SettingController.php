@@ -19,6 +19,8 @@ class SettingController extends Controller
 
     public function createSetting() {
         try {
+            $user=auth('api')->user();
+
             $request = request()->only('value');
             $rule = [
                 // 'name' => 'required|string|unique:settings',
@@ -31,7 +33,7 @@ class SettingController extends Controller
             $old_setting = Settings::where('name', '=', "API_KEY")->first();
             if($old_setting instanceof Setting) {
                 $old_setting->name = $old_setting->name;
-                $old_setting->fellowship_id = $old_setting->fellowship_id;
+               // $old_setting->fellowship_id = $old_setting->fellowship_id;
                 $old_setting->value = $request['value'];
                 if($old_setting->update()) {
                     return response()->json(['message' => 'setting successfully updated'], 200);
@@ -42,7 +44,6 @@ class SettingController extends Controller
             } else {
                 $new_setting = new Settings();
                 $new_setting->name = "API_KEY";
-              //  $new_setting->fellowship_id = $user->fellowship_id;
                 $new_setting->value = $request['value'];
                 if($new_setting->save()) {
                     return response()->json(['message' => 'setting successfully created'], 200);
@@ -81,6 +82,24 @@ class SettingController extends Controller
             return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
         }
     }
+
+    public function removeSetting($id){
+        try {
+        
+            $setting = Settings::find($id);
+            if($setting instanceof Settings) {
+                if($setting->delete()) {
+                    return response()->json(['message' => 'Setting deleted successfully'], 200);
+                }
+                return response()->json(['message' => 'Ooops! something went wrong', 'error' => 'unable to delete Setting'], 500);
+            } 
+            return response()->json(['message' => 'an error occurred', 'error' => 'Setting is not found'], 404);
+        } catch(Exception $ex) {
+            return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
+        }
+    }
+
+
     public function updateSetting($id) {
         try {
            
@@ -113,7 +132,7 @@ class SettingController extends Controller
     public function getCampaigns() {
         try {
           
-            $API_KEY = Settings::where(['name', '=', 'API_KEY'])->first();
+            $API_KEY = Settings::where('name', '=', 'API_KEY')->first();
             // return $this->root_url.'api_request/campaigns?API_KEY='.$API_KEY->value;
             if($API_KEY instanceof Settings) {
                 $response = $this->sendGetRequest('https://api.negarit.net/api/', 'api_request/campaigns?API_KEY='.$API_KEY->value);
@@ -162,6 +181,17 @@ class SettingController extends Controller
             return response()->json(['message' => 'error found', 'error' => 'setting was not found'], 404);
         } catch(Exception $ex) {
             return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
+        }
+    }
+
+    public function getSmsPortName(){
+        try {
+            $ports = SmsPort::all();
+                
+            return response()->json(['ports' => $ports], 200);
+        
+        }catch(Exception $ex) {
+            return repsonse()->josn(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
         }
     }
 }

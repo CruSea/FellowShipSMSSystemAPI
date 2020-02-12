@@ -8,80 +8,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Fellowship;
 use App\user_role;
 use App\User;
 use App\Role;
 
 class AuthController extends Controller
 {
-
-    public function register(Request $request){
-
-        try{
-     
-            $requests = request()->only('first_name', 'last_name','email','university','campus','phone_number');
-            $rule = [
-                'first_name' => 'required|string|max:255',
-                'last_name' => 'required|string', 
-                'email' => 'required|string|unique:users',
-                'university' => 'required|string',  
-                'campus'  => 'required|string',
-                'phone_number'=> 'regex:/^([0-9\s\-\+\(\)]*)$/',          
-            ]; 
-            $validator = Validator::make($requests, $rule);
-
-            if($validator->fails()) {
-                return response()->json(['error' => 'validation error' , 'message' => $validator->messages()], 400);
-            }
-            $phone_number  = $request['phone_number'];
-            $contact0 = Str::startsWith($request['phone_number'], '0');
-            $contact9 = Str::startsWith($request['phone_number'], '9');
-            $contact251 = Str::startsWith($request['phone_number'], '251');
-            if($contact0) {
-                $phone_number = Str::replaceArray("0", ["+251"], $request['phone_number']);
-            }
-            else if($contact9) {
-                $phone_number = Str::replaceArray("9", ["+2519"], $request['phone_number']);
-            }
-            else if($contact251) {
-                $phone_number = Str::replaceArray("251", ['+251'], $request['phone_number']);
-            }
-            if(strlen($phone_number) > 13 || strlen($phone_number) < 13) {
-                return response()->json(['message' => 'validation error', 'error' => 'phone number length is not valid'], 400);
-            }
-
-            
-            $check_phone_existance = User::where('phone_number', $phone_number)->exists();
-            if($check_phone_existance) {
-                return response()->json(['error' => 'The phone has already been taken'], 400);
-            } 
-
-        $user = new User();
-        $user->first_name = $request['first_name'];
-        $user->last_name = $request['last_name'];
-        $user->email = $request['email'];
-        $user->university = $request['university'];
-        $user->campus = $request['campus'];
-        $user->phone_number = $request['phone_number'];
-        $user->password = $request['password'];
-        $user->password = bcrypt($request->password);
-        $user->save();
-   
-       // $user->roles()->attach(Role::where('name', 'User')->first());
-
-       // $user = User::create();
-        $accessToken = $user ->createToken('authToken')->accessToken;
-
-        Auth::login($user);
-
-        return response(['user' => $user, 'access_token' => $accessToken]);
-
-    }catch(Exception $ex) {
-        return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
-    }
-    }
-
-
 
     public function login(){
 
@@ -115,13 +48,19 @@ class AuthController extends Controller
             $role_name = DB::table('roles')->select('name')->where([
                 ['id', '=', $role]
             ])->value('name');
+            
            // >>>>>>>>>>>>>>||||||| Check Role for Login ||||||||<<<<<<<<<<<<<<<<<<<
 
                if($role_name == 'Admin' || $role_name == 'User'){
                 $user = Auth::user();
                 $token = $user->createToken('authToken')->accessToken;
                  
-                return response()->json(['status'=>true, 'message'=>'Authentication Successful','Logged In as'=>$role_name,'result'=>$user, 'token'=>$token],200);
+               // $user_id=auth('api')->user()->id;
+               // $id=$user_id->id;
+                $id=$user->id;
+                $role=User::find($id)->roles;
+                
+                return response()->json(['status'=>true, 'message'=>'Authentication Successful','User_role_id'=>$role,'result'=>$user, 'token'=>$token],200);
                }else{
 
                 return response()->json(['status'=>false, 'message'=>'Woops UnAuthenticated!!!!'],500);
@@ -131,6 +70,7 @@ class AuthController extends Controller
             return response()->json(['status'=>false, 'result'=>null, 'message'=>'whoops! exception has occurred', 'error'=>$exception->getMessage()],500);
         }
     }
+
 
     public function logout (Request $request) {
 

@@ -13,18 +13,20 @@ class CreateSendMessage extends Migration
      */
     public function up()
     {
-       /* Schema::create('sent_messages', function (Blueprint $table) {
+        Schema::create('sent_messages', function (Blueprint $table) {
             $table->increments('id');
             $table->string('message');
             $table->string('sent_to');
             $table->boolean('is_sent');
             $table->boolean('is_delivered');
             $table->integer('sms_port_id')->unsigned()->nullable();
-            $table->foreign('sms_port_id')->references('id')->on('sms_port')->onDelete('cascade');
+            $table->foreign('sms_port_id')->references('id')->on('sms_ports')->onDelete('cascade');
+            $table->bigInteger('fellowship_id')->unsigned();
+            $table->foreign('fellowship_id')->references('fellow_id')->on('fellowships')->onDelete('cascade');
             $table->boolean('is_removed')->default(false);
-            $table->json('sent_by');
+            $table->string('sent_by');
             $table->timestamps();
-       });*/
+       });
     }
 
     /**
@@ -34,6 +36,6 @@ class CreateSendMessage extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('send_message');
+      //  Schema::dropIfExists('send_message');
     }
 }

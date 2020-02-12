@@ -19,7 +19,7 @@ Route::get('sample-restful-apis', 'EmailController@mail');
 // >>>>>>>>>>>>>>>>>>>> Authentication Routes <<<<<<<<<<<<<<<<<<<<
 
 Route::post('/register', [
-    'uses'=> 'Api\AuthController@register'
+    'uses'=> 'UserController@register'
  ]);
  
  
@@ -149,10 +149,6 @@ Route::get('/totalGroups',[
     'uses' => 'DashboardController@numberOfGroups',
 ]);
 
-Route::get('/campusTotalContact',[
-    'uses' => 'DashboardController@campusTotalContact',
-]);
-
 Route::get('/gendercount',[
     'uses' => 'DashboardController@getGenderCount'
 ]);
@@ -164,7 +160,29 @@ Route::get('/current_user',[
 Route::get('/current_univ',[
     'uses' => 'DashboardController@current_univ'
 ]);
-// ---------------------
+
+Route::get('/count_sentMessage',[
+     'uses' => 'DashboardController@count_sentMessage'
+]);
+// --------------------- Super Dashboard ----------------- //
+
+Route::get('/TotalnumberOfGroups',[
+      'uses' => 'SuperDashboardController@TotalnumberOfGroups'
+]);
+Route::get('/campusTotalContact',[
+    'uses' => 'SuperDashboardController@campusTotalContact'
+]);
+Route::get('/total_sentMessage',[
+    'uses' => 'SuperDashboardController@count_sentMessage'
+]);
+Route::get('/all_group_message',[
+    'uses' => 'SuperDashboardController@total_group_message'
+]);
+Route::get('/TotalunderGraduateMembers',[
+    'uses' => 'SuperDashboardController@TotalunderGraduateMembersNumber'
+]);
+
+//...........................................................
 Route::post('/importContact',[
      'uses' => 'ContactController@importContact' 
 ]);
@@ -180,10 +198,6 @@ Route::get('/exportGroupedContact',[
 
 // ************* |||| Email |||| ************
 
-Route::get('/sendmail',[
-    'uses' => 'sendMailController@sendMail'
-]);
-
 
 Route::get("/email", [
     'uses' => 'sendMailController@sendMail'
@@ -193,6 +207,10 @@ Route::get('/sendResetLink/{email}',[
     'uses' => 'sendMailController@sendResetLink'
 ]);
 
+Route::get('/sendmail/{email}',[
+    'uses' => 'mailcontroller@send'
+]);
+//  {{password Reset}}
 Route::get('/passwordReset/{email}/{pass}',[
      'uses' => 'PasswordResetController@passwordReset'
 ]);
@@ -219,16 +237,16 @@ Route::group(['prefix' => 'message'], function(){
 
 Route::group(['prefix' => 'message'], function(){
     Route::post('/', [
-        'uses' => 'MessageController@sendContactMessage',
+        'uses' => 'MessagesController@sendContactMessage',
     ]);
-    Route::get('/{id}', [
-        'uses' => 'MessageController@getContactMessage',
+    Route::get('/', [
+        'uses' => 'MessagesController@getContactsMessage',
     ]);
     Route::delete('/{id}', [
-        'uses' => 'MessageController@removeContactMessage',
+        'uses' => 'MessagesController@removeContactMessage',
     ]);
     Route::post('/search', [
-        'uses' => "MessageController@searchContactMessage",
+        'uses' => "MessagesController@searchContactMessage",
     ]);
 });
 
@@ -237,25 +255,50 @@ Route::group(['prefix' => 'message'], function(){
 
 Route::group(['prefix' => 'group-message'], function() {
     Route::post('/', [
-        'uses' => 'MessageController@sendTeamMessage'
+        'uses' => 'MessagesController@sendGroupMessage'
+    ]);
+    Route::get('/', [
+        'uses' => 'MessagesController@getGroupMessage'
     ]);
     Route::delete('/{id}', [
-        'uses' => 'MessageController@deleteTeamMessage'
+        'uses' => 'MessagesController@deleteTeamMessage'
     ]);
     Route::post('/search', [
-        'uses' => 'MessageController@searchTeamMessage',
+        'uses' => 'MessagesController@searchTeamMessage',
     ]);
 });
 Route::get('/group-messages', [
-    'uses' => 'MessageController@getTeamMessage'
+    'uses' => 'MessagesController@getTeamMessage'
 ]);
 
+//************Bulk Message**************/
+
+Route::post('/sendBulkMessage', [
+    'uses' => 'MessagesController@sendBulkMessage'
+]);
+
+Route::get('/getBulkMessage',[
+    'uses' => 'MessagesController@getBulkMessage'
+]);
+
+//************** Negarit Recieved Messages****************/
+
+Route::get('/recieveNegaritMessage',[
+    'uses' => 'MessagesController@getNegaritRecievedMessage'
+]);
 //****************>>>>>>>>> Messaging Port <<<<<<<<<<<<*****************/
 
 Route::post('/storeSmsPort',[
         'uses' => 'NegaritController@storeSmsPort'
 ]);
 
+Route::get('/sms-ports', [
+    'uses' => 'NegaritController@getSmsPorts',
+]);
+
+Route::get('/port_name', [
+    'uses' => 'SettingController@getSmsPortName',
+]);
 // *****************>>>>>>>>> Settings <<<<<<<<<<<<<******************/
 
 Route::group(['prefix' => 'setting'], function () {
@@ -269,7 +312,7 @@ Route::group(['prefix' => 'setting'], function () {
         'uses' => 'SettingController@updateSetting',
     ]);
     Route::delete('/{id}', [
-        'uses' => 'SettingController@deleteSetting',
+        'uses' => 'SettingController@removeSetting',
     ]);
 });
 
@@ -283,3 +326,13 @@ Route::get('/get-sms-ports', [
     'uses' => 'SettingController@getSmsPorts',
 ]);
 
+
+// *********** || *** Scheduled Message *** || *******
+
+Route::post('/addMessageForGroup',[
+    'uses' => 'ScheduledMessageController@addMessageForGroup'
+]);
+
+Route::get('/get_msg',[
+    'uses' => 'DashboardController@get_msg'
+]);
