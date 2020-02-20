@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Log;
 use Illuminate\Support\Str;
 use App\SmsPort;
 use App\sentMessages;
@@ -15,13 +16,14 @@ use App\Contact;
 use App\groups;
 use App\ContactGroup;
 use App\GroupMessage;
+use App\RecievedMessage;
 
 class MessagesController extends Controller
 {
     protected $negarit_api_url;
 
     public function __construct() {
-        $this->middleware('auth:api');
+      //  $this->middleware('auth:api');
         $this->negarit_api_url = 'https://api.negarit.net/api/';
     }
 
@@ -42,7 +44,7 @@ class MessagesController extends Controller
             if($validator->fails()) {
                 return response()->json(['response' => 'validation error', 'error' => $validator->messages()], 500);
             }
-
+          
             // $getSmsPortName = SmsPort::find($request['port_name']);
             // $getSmsPortName = DB::table('sms_ports')->where('port_name', '=', $request['port_name'])->first();
             $getSmsPortName = SmsPort::where('port_name', '=', $request['port_name'])->first();
@@ -571,44 +573,19 @@ class MessagesController extends Controller
         }
     }
 
-    // ******** || *** Recieve Message from client *** || ************
+    // ******** || *** Recieve Message from client *** || ************ 
 
     public function getNegaritRecievedMessage() {
-        try {
-          
-            $setting = Settings::where('name', '=', 'API_KEY')->first();
-            if($setting instanceof Settings) {
-                $API_KEY = $setting->value;
-                $negarit_response = $this->sendGetRequest($this->negarit_api_url,
-                    'api_request/received_messages?API_KEY='.$API_KEY);
-                $decode_negarit_response = json_decode($negarit_response,true);
-               
-               //  $data = $decode_negarit_response; 
-               
-                if($decode_negarit_response) {
-                    
-                    foreach ($decode_negarit_response as $list) {
-                       // foreach (array_values($list) as $card) {
-                               return resopnse()->json($card);
-                        }
-                    if(isset($decode_negarit_response->status) && isset($decode_negarit_response->received_messages)) {
-                                $received_messages = $decode_negarit_response->received_messages;
-                          
-                           //  return response()->json(['status'=> true, 'received_messages'=> $received_messages],200);
-                            //    foreach ($decode_negarit_response->received_messages as $list) {
-                            //    // foreach (array_values($list)[0] as $card) {
-                            //        return resopnse()->json($list);
-                               }
-                            }
-                         //  }  
-                     // ????????????????????????????????????????????????
-                    //**"""""""""""""""something to do here"""""""""*******************************/ => $decode_negarit_response
-              //  }
-                return response()->json(['message' => 'Ooops! something went wrong'], 500);
-            }
-            return response()->json(['message' => '404 error found', 'error' => 'Api Key is not found'],404);
-        } catch(Exception $ex) {
-            return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
-        }
-    }
+         Logger('message', ['data'=>request()->all()]);
+        // $user=auth('api')->user();
+          $request = request()->only('message','sent_from','sender_name','received_date');
+         $received = new RecievedMessage();
+         $received->message = $request['message'];
+         $received->sent_from =$request['sent_from'];
+         $received->sender_name =$request['sender_name'];
+         $received->received_date =$request['received_date'];
+       //  $received->fellowship_id = $user->fellowship_id; 
+         $received->save();
+         return response()->json($request['message']);      
+ }
 }

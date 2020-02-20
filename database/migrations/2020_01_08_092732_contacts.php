@@ -25,6 +25,8 @@ class Contacts extends Migration
             $table->string('graduate_year');
             $table->integer('is_under_graduate');
             $table->integer('is_this_year_gc');
+            $table->string('id_number');
+            $table->longText('photo_url')->nullable();
             $table->bigInteger('fellowship_id')->unsigned();
             $table->foreign('fellowship_id')->references('fellow_id')->on('fellowships')->onDelete('cascade');
             $table->timestamps();  

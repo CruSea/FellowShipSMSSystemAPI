@@ -184,5 +184,16 @@ class DashboardController extends Controller
 		// 			->get();
 	}
 
-	
+	public function messageCost(){
+		$user=auth('api')->user();
+
+		$contactMessage = sentMessages::where([['is_removed', '=', false],['fellowship_id', '=', $user->fellowship_id]])->orderBy('id', 'desc')->paginate(10);
+            $countMessages = $contactMessage->count();
+            if($countMessages == 0) {
+                return response()->json(['No Mssages Available'], 200);
+            }else{
+				$totalCost = $countMessages*0.25;
+				return response()->json(['cost'=>$totalCost], 200);
+			}
+	}
 }

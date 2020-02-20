@@ -30,7 +30,7 @@ class ContactController extends Controller
         try{
             $user=auth('api')->user();
 
-            $request = request()->only('full_name', 'phone_number', 'email','acadamic_dep','fellow_dep', 'gender','graduate_year');
+            $request = request()->only('full_name', 'phone_number', 'email','acadamic_dep','fellow_dep', 'gender','graduate_year','id_number');
             $rule = [
                 'full_name' => 'required|string|max:255',
                 'phone_number' => 'regex:/^([0-9\s\-\+\(\)]*)$/',
@@ -39,7 +39,9 @@ class ContactController extends Controller
                 'fellow_dep' => 'required|string|max:255',
                 'gender' => 'required|string|max:6',
                 'graduate_year' => 'string',
+                'id_number'=> 'string|max:12',
             ]; 
+            return response()->json($request['full_name']);
             $validator = Validator::make($request, $rule);
             if($validator->fails()) {
                 return response()->json(['error' => 'validation error' , 'message' => $validator->messages()], 400);
@@ -83,6 +85,8 @@ class ContactController extends Controller
                 return response()->json(['error' => 'graduation year is not valid for under graduate member'], 400);
             } else if($difference < 380 && $difference > 0) {
                 $this_year_gc = true;
+            }else{
+                $this_year_gc = false;
             }   
 
             $contact = new Contact();
@@ -95,6 +99,7 @@ class ContactController extends Controller
             $contact->graduate_year = $request['graduate_year'];
             $contact->is_under_graduate = true;
             $contact->is_this_year_gc = $this_year_gc;
+            $contact->id_number = $request['id_number'];
             $contact->fellowship_id = $user->fellowship_id;
             $contact->save();
            
@@ -140,6 +145,44 @@ class ContactController extends Controller
         }catch(Exception $ex) {
             return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
         }
+    }
+ 
+    public function upload_photo(Request $request,$id){
+        $user = auth('api')->user();
+        $image_file = request()->file('photo_file');
+                
+        $image_url = null;
+          if (isset($image_file)){
+              $file_extension = strtolower($image_file->getClientOriginalExtension());
+              if($file_extension == "jpg" || $file_extension == "png") {
+                  $posted_file_name = time().'.'. $file_extension;
+                  $destinationPath = public_path('/uploads');
+                  $image_file->move($destinationPath, $posted_file_name);
+                  $image_url = 'http://127.0.0.1:8000/uploads/' . $posted_file_name;
+                  
+                  $contact_photo=Contact::find($id);
+                  if($contact_photo){
+                         $contact_photo->photo_url=$image_url;
+                         $contact_photo->save();
+                  }
+
+                  return response()->json(['success' => true, 'file uploaded successfully' ], 200);
+              }
+              else {
+                  return response()->json(['success' => false, 'error' => "The uploaded file does not have a valid image extension."], 500);
+              }
+             
+             /* DB::table('contacts')->where([
+                  ['fellowship_id', '=',$user->fellowship_id],
+                  ['contact_id','=',$id]])
+              ->update(['photo_url'=>$image_url]);
+
+            /*  $contact_photo=DB::table('contacts')->where([
+                  ['contact_id', '=', $id],['fellowship_id','=',$user->fellowship_id]
+              ])->first(); 
+              $contact_photo->photo_url= $image_url;
+              $contact_photo->update();*/
+         }       
     }
 
 
@@ -283,6 +326,35 @@ class ContactController extends Controller
 
         } catch(Exception $ex) {
             return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
+        }
+    }
+
+    public function getProfile($id){
+        $user = auth('api')->user();
+        $profile = Contact::where([['contact_id','=',$id],['fellowship_id','=',$user->fellowship_id]])->first();
+        $full_name=$profile->full_name;
+        $phone_number=$profile->phone_number;
+        $email=$profile->email;
+        $acadamic_dep=$profile->acadamic_dep;
+        $fellow_dep=$profile->fellow_dep;
+        $gender=$profile->gender;
+        $graduation=$profile->graduate_year;
+        $id_no=$profile->id_number;
+        $photo=$profile->photo_url;
+        return response()->json([[$full_name],[$phone_number],[$email],[$acadamic_dep],[$fellow_dep],[$gender],[$graduation],[$id_no],[$photo]]);
+    }
+
+    public function deleteProfile($id){
+        $user = auth('api')->user();
+        $deleteProfile=Contact::find($id);
+        $deleteOnGroup=DB::table('group_contacts')->where([
+            ['id', '=', $id],
+        ])->first();
+        if($deleteProfile->fellowship_id == $user->fellowship_id && $deleteOnGroup->fellowship_id == $user->fellowship_id ){
+            $deleteProfile->delete();
+            if($deleteProfile){
+                return response()->json('Profile deleted successfully');
+            }
         }
     }
 

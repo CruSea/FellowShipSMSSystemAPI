@@ -164,6 +164,10 @@ Route::get('/current_univ',[
 Route::get('/count_sentMessage',[
      'uses' => 'DashboardController@count_sentMessage'
 ]);
+
+Route::get('/messageCost',[
+     'uses' => 'DashboardController@messageCost'
+]);
 // --------------------- Super Dashboard ----------------- //
 
 Route::get('/TotalnumberOfGroups',[
@@ -182,6 +186,10 @@ Route::get('/TotalunderGraduateMembers',[
     'uses' => 'SuperDashboardController@TotalunderGraduateMembersNumber'
 ]);
 
+Route::get('/totalMessageCost',[
+    'uses'=> 'SuperDashboardController@totalMessageCost'
+]);
+
 //...........................................................
 Route::post('/importContact',[
      'uses' => 'ContactController@importContact' 
@@ -189,13 +197,27 @@ Route::post('/importContact',[
 
 Route::get('/exportContact',[
      'uses' => 'ContactController@exportContact',
-    
+
+]);
+Route::get('/importContact',[
+     'uses'=> 'ContactController@importContact',
 ]);
 
 Route::get('/exportGroupedContact',[
     'uses' => 'GroupedContactController@exportGroupedContact'
 ]);
 
+Route::get('/getprofile/{id}',[
+    'uses'=> 'ContactController@getProfile',
+]);
+
+Route::post('/upload_photo/{id}',[
+    'uses'=> 'ContactController@upload_photo'
+]);
+
+Route::delete('/deleteProfile/{id}',[
+    'uses'=>'ContactController@deleteProfile'
+]);
 // ************* |||| Email |||| ************
 
 
@@ -283,9 +305,9 @@ Route::get('/getBulkMessage',[
 
 //************** Negarit Recieved Messages****************/
 
-Route::get('/recieveNegaritMessage',[
+Route::post('/recieveNegaritMessage',[
     'uses' => 'MessagesController@getNegaritRecievedMessage'
-]);
+]);  
 //****************>>>>>>>>> Messaging Port <<<<<<<<<<<<*****************/
 
 Route::post('/storeSmsPort',[

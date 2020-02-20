@@ -26,6 +26,10 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')
         //          ->hourly();
+       
+       /* DB::table('users')->where('created_at', '<=', Carbon::now()
+        ->subDay())->delete();
+    }*/
     }
 
     /**
