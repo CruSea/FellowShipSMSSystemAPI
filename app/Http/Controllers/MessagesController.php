@@ -13,10 +13,12 @@ use App\FellowMessages;
 use App\Fellowship;
 use App\Settings;
 use App\Contact;
+use App\smsVote;
 use App\groups;
 use App\ContactGroup;
 use App\GroupMessage;
 use App\RecievedMessage;
+use Carbon\Carbon;
 
 class MessagesController extends Controller
 {
@@ -576,7 +578,8 @@ class MessagesController extends Controller
     // ******** || *** Recieve Message from client *** || ************ 
 
     public function getNegaritRecievedMessage() {
-         Logger('message', ['data'=>request()->all()]);
+         try{
+        Logger('message', ['data'=>request()->all()]);
         // $user=auth('api')->user();
           $request = request()->only('message','sent_from','sender_name','received_date');
          $received = new RecievedMessage();
@@ -585,7 +588,210 @@ class MessagesController extends Controller
          $received->sender_name =$request['sender_name'];
          $received->received_date =$request['received_date'];
        //  $received->fellowship_id = $user->fellowship_id; 
-         $received->save();
-         return response()->json($request['message']);      
+         $received->save(); 
+         return response()->json($request['message']);   
+         }catch(Exception $e){
+             return response()->json(['Error'=>'double message from same client']);
+         }   
+ }
+
+ public function smsVote(){
+    try {
+        $user=auth('api')->user();
+
+        $request = request()->only('port_name','message','start_date','end_date');
+        $fellowship_message = new FellowMessages();
+        $rule = [
+            'port_name' => 'required|string|max:250',
+            'message' => 'required|string|min:1',
+            'start_date'=> 'required',
+            'end_date' => 'required'
+        ];
+        $validator = Validator::make($request, $rule);
+        if($validator->fails()) {
+            return response()->json(['message' => 'validation error', 'error' => $validator->messages()], 400);
+        }         
+        $getSmsPortName = SmsPort::where('port_name', '=', $request['port_name'])->first();
+        if(!$getSmsPortName) {
+            return response()->json(['message' => 'error found', 'error' => 'sms port is not found'], 404);
+        }
+        $getSmsPortId = $getSmsPortName->id;
+
+        $fellowship_id = $user->fellowship_id;
+
+        $fellowship = Fellowship::find($fellowship_id);
+        if(!$fellowship) {
+            return response()->json(['message' => "can't send a voting campaign", 'error' => 'fellowship is not found'], 404);
+        }
+       // $today = Carbon::parse(date('Y-m-d'));
+       $date = date('Y-m-d'); 
+       $date = $request['start_date'];
+       $date2 = date('Y-m-d'); 
+       $date2 = $request['end_date'];
+
+        $vote = new smsVote();
+        $vote->message = $request['message'];
+        $vote->start_date = $date;
+        $vote->end_date = $date2;
+        $vote->save();
+ 
+        $fellowship_message->message = $request['message'] && $request['start_date'];
+        $fellowship_message->fellowship_id = $fellowship_id;
+        $fellowship_message->sent_by = $user->first_name;
+        $fellowship_message->under_graduate = true;
+        $fellowship_message->save();
+
+        $contacts = Contact::where('fellowship_id', '=', $user->fellowship_id)->get();
+
+        if(count($contacts) == 0) {
+            return response()->json(['message' => 'member is not found in '. $fellowship->university_name. ' fellowship'], 404);
+        }
+                          
+        $setting = Settings::where('name', '=', 'API_KEY')->first();
+        if(!$setting) {
+            return response()->json(['message' => '404 error found', 'error' => 'Api Key is not found'], 404);
+        } 
+        $insert = [];
+        $contains_name = Str::contains($request['message'], '{name}');
+        if($contains_name) {
+            for($i = 0; $i < count($contacts); $i++) {
+                $contact = $contacts[$i];
+                $replaceName = Str::replaceArray('{name}', [$contact->full_name], $request['message']);
+
+                if($contact->is_under_graduate) {
+
+                    $sent_message = new sentMessages();
+                    $sent_message->message = $replaceName;
+                    $sent_message->sent_to = $contact->full_name;
+                    $sent_message->is_sent = false;
+                    $sent_message->is_delivered = false;
+                    $sent_message->sms_port_id = $getSmsPortId;
+                    $sent_message->fellowship_id = $user->fellowship_id;
+                    $sent_message->sent_by = $user->first_name;
+                    
+                    if(!$sent_message->save()) {
+
+                        $sent_message = new sentMessages();
+                        $sent_message->message = $replaceName;
+                        $sent_message->sent_to = $contact->full_name;
+                        $sent_message->is_sent = false;
+                        $sent_message->is_delivered = false;
+                        $sent_message->sms_port_id = $getSmsPortId;
+                        $sent_message->fellowship_id = $user->fellowship_id;
+                        $sent_message->sent_by = $user->first_name;
+                        $sent_message->save();
+                    }
+                    $insert[] = ['id' => $i+1, 'message' => $sent_message->message, 'phone' => $contact->phone];
+                }
+            }
+        } else {
+            for($i = 0; $i < count($contacts); $i++) {
+                $contact = $contacts[$i];
+
+                if($contact->is_under_graduate) {
+
+                    $sent_message = new sentMessages();
+                    $sent_message->message = $request['message'];
+                    $sent_message->sent_to = $contact->full_name;
+                    $sent_message->is_sent = false;
+                    $sent_message->is_delivered = false;
+                    $sent_message->sms_port_id = $getSmsPortId;
+                    $sent_message->fellowship_id = $user->fellowship_id;
+                    $sent_message->sent_by = $user->first_name;
+                    if(!$sent_message->save()) {
+
+                        $sent_message = new sentMessages();
+                        $sent_message->message = $request['message'];
+                        $sent_message->sent_to = $contact->full_name;
+                        $sent_message->is_sent = false;
+                        $sent_message->is_delivered = false;
+                        $sent_message->sms_port_id = $getSmsPortId;
+                        $sent_message->fellowship_id = $user->fellowship_id;
+                        $sent_message->sent_by = $user->first_name;
+                        $sent_message->save();
+                    }
+                    $insert[] = ['id' => $i+1, 'message' => $sent_message->message, 'phone' => $contact->phone_number];
+                }
+            }
+           // return response()->json(['message' => $sent_message]);
+        }
+        if($insert == []) {
+            $fellowship_message->delete();
+            return response()->json(['message' => 'under graduate members are not found in this fellowship'], 404);
+        }
+        // start date if condition with end date 
+        if($sent_message->created_at >= $request['start_date']){
+
+        $negarit_message_request = array();
+        $negarit_message_request['API_KEY'] = $setting->value;
+        $negarit_message_request['campaign_id'] = $getSmsPortName->negarit_campaign_id;
+        $negarit_message_request['messages'] = $insert;
+          
+        $negarit_response = $this->sendPostRequest($this->negarit_api_url, 
+            'api_request/sent_multiple_messages', 
+            json_encode($negarit_message_request));
+        $decoded_response = json_decode($negarit_response);
+        }
+       // return response()->json(['message' => $decoded_response]);
+
+        if($decoded_response) {
+            if(isset($decoded_response->status)) {
+                $sent_message->is_sent = true;
+                $sent_message->is_delivered = true;
+                $sent_message->update();
+                return response()->json(['response' => $decoded_response], 200);
+            } 
+            else {
+                $sent_message->is_sent = true;
+                $sent_message->is_delivered = true;
+                $sent_message->update();
+                return response()->json(['response' => $decoded_response], 500);
+            }
+            return response()->json(['message' => $decoded_response]);
+        } else {
+            return response()->json(['message' => 'Ooops! something went wrong', 'response' => $decoded_response], 500);
+        }
+   
+} catch(Exception $ex) {
+    return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
+}
+ }
+
+ public function getVote(){
+     // from Recieved message table 
+     // get messages between start date and end date
+     // double message(vote) from same contact is not allowed
+     // vote from non contact is not allowed
+     // use matching keyword.
+     $getvote =  DB::table('sms_votes')
+     ->select('start_date','end_date')
+     ->first();
+     $start_date = $getvote->start_date;
+     $end_date = $getvote->end_date;
+          //$collect = RecievedMessage::where('start_date','>=',);
+          $message = DB::table('recieved_messages')
+          ->select('message')
+          ->whereBetween('created_at', [$start_date, $end_date])
+          ->value('message');
+
+          $keyA = DB::table('recieved_messages')
+          ->where('message','=','A')
+          ->whereBetween('created_at', [$start_date, $end_date])
+          ->count();
+  
+          $keyB = DB::table('recieved_messages')
+          ->where('message','=','B')
+          ->whereBetween('created_at', [$start_date, $end_date])
+          ->count();
+
+          $keyC = DB::table('recieved_messages')
+          ->where('message','=','C')
+          ->whereBetween('created_at', [$start_date, $end_date])
+          ->count();
+
+
+          return response()->json([[$message],[$keyA],[$keyB],[$keyC],[$start_date],[$end_date]]);
+          
  }
 }
+

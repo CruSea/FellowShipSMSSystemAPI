@@ -18,7 +18,7 @@ class NegaritController extends Controller
         try {
                 
             $user=auth('api')->user('first_name');
-
+           // $request = request()->only('port_name','port_type','port_id','campaign_id');
             $setting = Settings::where('name', '=', 'API_KEY')->first();
             if(!$setting) {
                 return response()->json(['error' => 'setting was not found'], 404);
@@ -26,32 +26,21 @@ class NegaritController extends Controller
             $API_KEY = $setting->value;
             $rule = [
                 'port_name' => 'required|string|min:4',
-                'negarit_sms_port_id' => 'required|integer', // from API 
-                'negarit_campaign_id' => 'required|integer', // From API
-                'port_type' => 'required|string'
+                'port_type' => 'required|string',
+                'port_id' => 'required|integer', 
+                'campaign_id' => 'required|integer', 
             ];
             $validator = Validator::make($request->all(), $rule);
             if($validator->fails()) {
                 return response()->json(['message' => 'validation error', 'error' => $validator->messages()], 500);
             }
-            
-           // $fellowship_id = $user->fellowship_id;
-
-            // >>>>>***>>>***>>> check sms port existance before <<<***<<<***<<<<<<
-            
-           /* $fellowship_smsPort = SmsPort::where(['port_name', '=', $request->input('port_name')])->first();
-            if($fellowship_smsPort) {
-                return response()->json(['error' => 'sms port has already been taken'], 400);
-            }*/
 
             $smsPort = new SmsPort();
             $smsPort->port_name = $request->input('port_name');
-          //  $smsPort->fellowship_id = $fellowship_id;
-            
-            $smsPort->api_key = $API_KEY;
-            $smsPort->negarit_sms_port_id = $request->input('negarit_sms_port_id');
-            $smsPort->negarit_campaign_id = $request->input('negarit_campaign_id');
             $smsPort->port_type = $request->input('port_type');
+            $smsPort->api_key = $API_KEY;
+            $smsPort->negarit_sms_port_id = $request->input('port_id');
+            $smsPort->negarit_campaign_id = $request->input('campaign_id');
             $smsPort->created_by = $user->first_name;
             if($smsPort->save()) {
                 return response()->json(['message' => 'port saved successfully'], 200);
@@ -61,21 +50,6 @@ class NegaritController extends Controller
             return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex], 500);
         }
     }
-
-
-   /* public function getSmsPort($id) {
-        try {
-           
-            $smsPort = SmsPort::find($id);
-            if(!$smsPort) {
-                return response()->json(['error' => 'sms port is not found'], 404);
-            }
-            $smsPort->created_by = json_decode($smsPort->created_by);
-            return response()->json(['sms_port', $smsPort], 200);
-        } catch(Exception $ex) {
-            return response()->json(['message' => 'Ooops! something went wrong', 'error' => $ex->getMessage()], 500);
-        }
-    }*/
     
     public function getSmsPorts() {
         try {

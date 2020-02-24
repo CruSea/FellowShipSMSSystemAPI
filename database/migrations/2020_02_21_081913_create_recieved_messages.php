@@ -16,7 +16,7 @@ class CreateRecievedMessages extends Migration
         Schema::create('recieved_messages', function (Blueprint $table) {
             $table->bigIncrements('message_id');
             $table->string('message');
-            $table->string('sent_from');
+            $table->string('sent_from')->unique();
             $table->string('sender_name');
             $table->string('received_date');
             $table->bigInteger('fellowship_id')->unsigned()->nullable();

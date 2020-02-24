@@ -196,4 +196,71 @@ class DashboardController extends Controller
 				return response()->json(['cost'=>$totalCost], 200);
 			}
 	}
+
+	public function get_Recivemsg(){
+		$user=auth('api')->user();
+
+		$month1 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '01')
+       // ->whereDate('created_at', '2020-02-08')
+		->count();
+		$month2 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '02')
+		->count();
+		$month3 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '03')
+		->count();
+		$month4 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '04')
+		->count();
+		$month5 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '05')
+		->count();
+		$month6 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '06')
+		->count();
+		$month7 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '07')
+		->count();
+		$month8 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '08')
+		->count();
+		$month9 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '09')
+		->count();
+		$month10 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '10')
+		->count();
+		$month11 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '11')
+		->count();
+		$month12 = DB::table('recieved_messages')
+		->select('message')
+		->whereMonth('created_at', '12')
+		->count();
+
+		return response()->json([[$month1],[$month2],[$month3],[$month4],[$month5],[$month6],[$month7],[$month8]
+		,[$month9],[$month10],[$month11],[$month12]]);
+
+		// $users = DB::table('users')
+        // ->whereMonth('created_at', '10')
+		// ->get();
+		
+		// The whereDay() method may be used to compare a column's value against a specific day of a month:
+
+		// 	$users = DB::table('users')
+		// 			->whereDay('created_at', '20')
+		// 			->get();
+	}
 }

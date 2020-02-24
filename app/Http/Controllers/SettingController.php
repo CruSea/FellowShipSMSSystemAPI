@@ -158,6 +158,27 @@ class SettingController extends Controller
         }
     }
 
+    public function addSmsPorts(){
+        $request = request()->only('port_name','port_id','campaign_id');
+        $rule = [
+             'port_name' => 'required|string',
+             'port_id' => 'required|string',
+             'campaign_id' => 'required|string'
+        ];
+        $validator = Validator::make($request, $rule);
+        if($validator->fails()) {
+            return response()->json(['message' => 'validation error', 'error' => $validator->messages()], 500);
+        }
+      $API_KEY = Settings::where('name', '=', 'API_KEY')->first();
+      $smsport = new SmsPort();
+      $smsport->port_name= $request['port_name'];
+      $smsport->api_key = $API_KEY->value;
+      $smsport->negarit_sms_port_id = $request['port_id'];
+      $smsport->negarit_sms_campaign_id = $request['campaign_id'];
+      $smsport->save();
+
+    }
+
     public function getSmsPorts() {
         try {
             

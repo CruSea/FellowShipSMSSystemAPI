@@ -190,6 +190,14 @@ Route::get('/totalMessageCost',[
     'uses'=> 'SuperDashboardController@totalMessageCost'
 ]);
 
+Route::get('/get_sentmsg',[
+    'uses'=> 'SuperDashboardController@get_sentmsg'
+]);
+
+Route::get('/get_recivemsgs',[
+    'uses' => 'SuperDashboardController@get_Recivemsgs'
+]);
+
 //...........................................................
 Route::post('/importContact',[
      'uses' => 'ContactController@importContact' 
@@ -301,6 +309,14 @@ Route::post('/sendBulkMessage', [
 
 Route::get('/getBulkMessage',[
     'uses' => 'MessagesController@getBulkMessage'
+]);
+
+Route::post('/smsVote',[
+    'uses' => 'MessagesController@smsVote'
+]);
+
+Route::get('/getVote',[
+     'uses' => 'MessagesController@getVote'
 ]);
 
 //************** Negarit Recieved Messages****************/
